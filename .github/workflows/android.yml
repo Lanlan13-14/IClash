@@ -1,0 +1,65 @@
+name: Android CI & Release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version name, e.g. 1.0.1'
+        required: true
+      release_notes:
+        description: 'Release notes'
+        required: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v3
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v2
+        with:
+          api-level: 34
+          build-tools-version: '34.0.0'
+
+      - name: Copy icons into res
+        run: |
+          cp -r icons/mipmap-* app/src/main/res/
+
+      - name: Build Debug & Release APKs
+        run: ./gradlew :app:assembleDebug :app:assembleRelease --stacktrace
+
+      - name: Create GitHub Release
+        id: create_release
+        uses: actions/create-release@v1
+        with:
+          tag_name: v${{ github.event.inputs.version }}
+          release_name: Release ${{ github.event.inputs.version }}
+          body: ${{ github.event.inputs.release_notes }}
+          draft: false
+          prerelease: false
+
+      - name: Upload Debug APK
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: app/build/outputs/apk/debug/app-debug.apk
+          asset_name: IClash-${{ github.event.inputs.version }}-debug.apk
+          asset_content_type: application/vnd.android.package-archive
+
+      - name: Upload Release APK
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: app/build/outputs/apk/release/app-release.apk
+          asset_name: IClash-${{ github.event.inputs.version }}-release.apk
+          asset_content_type: application/vnd.android.package-archive
