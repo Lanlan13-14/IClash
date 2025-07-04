@@ -30,17 +30,16 @@ jobs:
           build-tools-version: '34.0.0'
 
       - name: Remove default launcher mipmap folders
-        run: |
-          rm -rf app/src/main/res/mipmap-*/
-      
+        run: rm -rf app/src/main/res/mipmap-*/
+
       - name: Copy custom icons into res
-        run: |
-          cp -r icons/mipmap-* app/src/main/res/
+        run: cp -r icons/mipmap-* app/src/main/res/
 
       - name: Build Debug & Release APKs
         uses: gradle/gradle-build-action@v2
         with:
           gradle-version: '8.2'
+          cache-disabled: true
           arguments: ':app:assembleDebug :app:assembleRelease --stacktrace'
 
       - name: Create GitHub Release
