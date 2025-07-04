@@ -5,10 +5,9 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.material3.*
 import androidx.navigation.compose.*
+
 import com.iclash.ui.dashboard.DashboardPage
-import com.iclash.ui.config.ConfigPage
-import com.iclash.ui.config.ProvidersPage
-import com.iclash.ui.config.RuleOverwritePage
+import com.iclash.ui.config.*
 import com.iclash.ui.proxy.ProxyPage
 import com.iclash.ui.settings.SettingsPage
 
