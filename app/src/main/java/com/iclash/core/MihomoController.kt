@@ -6,6 +6,7 @@ import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.*
 
 object MihomoController {
@@ -33,10 +34,8 @@ object MihomoController {
     suspend fun getProviders(): List<String> =
         client.get("$BASE/providers/proxies").body<JsonArray>().map { it.jsonPrimitive.content }
 
-    suspend fun updateProvider(name: String): Boolean {
-        val resp = client.put("$BASE/providers/proxies/$name").bodyAsText()
-        return resp.isNotBlank()
-    }
+    suspend fun updateProvider(name: String): Boolean =
+        client.put("$BASE/providers/proxies/$name").bodyAsText().isNotBlank()
 
     suspend fun getProxies(): ProxiesResponse =
         client.get("$BASE/proxies").body()
@@ -59,14 +58,17 @@ object MihomoController {
     }
 }
 
-@kotlinx.serialization.Serializable
-data class ProxiesResponse(val proxies: Map<String,List<ProxyItem>>)
+@Serializable
+data class ProxiesResponse(val proxies: Map<String, List<ProxyItem>>)
 
-@kotlinx.serialization.Serializable
+@Serializable
 data class ProxyItem(
-    val name: String, val type: String? = null,
-    val now: String? = null, val delay: Int? = null
+    val name: String,
+    val type: String? = null,
+    val now: String? = null,
+    val delay: Int? = null,
+    val hidden: Boolean? = false
 )
 
-@kotlinx.serialization.Serializable
+@Serializable
 data class DelayResponse(val delay: Int)
