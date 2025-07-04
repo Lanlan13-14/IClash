@@ -1,6 +1,7 @@
 plugins {
-    id("com.android.application") version "8.2.0" apply false
-    kotlin("android") version "1.9.10" apply false
-}
+    // Android Gradle Plugin
+    id("com.android.application") version "8.5.0" apply false
 
-// 不要再出现 allprojects { repositories { … } } 或 subprojects { … }
+    // Kotlin Android 插件，升级到与 Compose Compiler 兼容的版本
+    kotlin("android") version "1.9.25" apply false
+}
