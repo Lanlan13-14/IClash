@@ -33,7 +33,7 @@ android {
 }
 
 dependencies {
-    // AndroidX 核心与 Compose
+    // AndroidX & Compose
     implementation("androidx.core:core-ktx:1.12.0")
     implementation("androidx.activity:activity-compose:1.8.2")
     implementation("androidx.compose.ui:ui:1.4.0")
@@ -48,7 +48,7 @@ dependencies {
     implementation("io.ktor:ktor-serialization-kotlinx-json:2.3.4")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
 
-    // XML 主题与属性支持
+    // AppCompat & MaterialComponents（提供 XML 主题与 attr）
     implementation("androidx.appcompat:appcompat:1.6.1")
     implementation("com.google.android.material:material:1.9.0")
 }
