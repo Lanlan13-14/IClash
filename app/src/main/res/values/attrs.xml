@@ -1,5 +1,4 @@
 <resources>
-    <!-- 声明自定义主题中要用到的属性 -->
     <attr name="colorPrimary" format="color"/>
     <attr name="colorOnPrimary" format="color"/>
     <attr name="colorSecondary" format="color"/>
