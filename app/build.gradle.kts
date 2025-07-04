@@ -1,7 +1,7 @@
 plugins {
     id("com.android.application")
     kotlin("android")
-    kotlin("plugin.serialization") // 启用 Kotlin 序列化插件
+    kotlin("plugin.serialization")
 }
 
 android {
@@ -14,6 +14,9 @@ android {
         targetSdk = 35
         versionCode = 1
         versionName = "1.0.0"
+
+        // 启用 MultiDex，防止方法数超限导致的 Dex 合并失败
+        multiDexEnabled = true
     }
 
     buildFeatures {
@@ -35,7 +38,6 @@ android {
 }
 
 dependencies {
-    // Compose 版本管理 BOM
     implementation(platform("androidx.compose:compose-bom:2025.06.00"))
 
     implementation("androidx.compose.ui:ui")
@@ -44,15 +46,16 @@ dependencies {
     implementation("androidx.activity:activity-compose:1.8.2")
     implementation("androidx.navigation:navigation-compose:2.8.0")
 
-    // Android 基础库
     implementation("androidx.core:core-ktx:1.12.0")
     implementation("androidx.appcompat:appcompat:1.6.1")
     implementation("com.google.android.material:material:1.9.0")
 
-    // 网络和序列化
     implementation("io.ktor:ktor-client-core:2.3.4")
     implementation("io.ktor:ktor-client-cio:2.3.4")
     implementation("io.ktor:ktor-client-content-negotiation:2.3.4")
     implementation("io.ktor:ktor-serialization-kotlinx-json:2.3.4")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
+
+    // MultiDex 支持库
+    implementation("androidx.multidex:multidex:2.0.1")
 }
