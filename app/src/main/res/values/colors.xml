@@ -1,0 +1,16 @@
+<resources>
+    <color name="colorPrimary">#A59BFF</color>
+    <color name="colorOnPrimary">#FFFFFF</color>
+
+    <color name="colorSecondary">#FFC9DE</color>
+    <color name="colorOnSecondary">#000000</color>
+
+    <color name="colorBackground">#F5F5FA</color>
+    <color name="colorOnBackground">#1A1A1A</color>
+
+    <color name="colorSurface">#FFFFFF</color>
+    <color name="colorOnSurface">#1A1A1A</color>
+
+    <color name="colorError">#F44336</color>
+    <color name="colorOnError">#FFFFFF</color>
+</resources>
