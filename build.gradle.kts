@@ -3,9 +3,4 @@ plugins {
     kotlin("android") version "1.9.10" apply false
 }
 
-allprojects {
-    repositories {
-        google()
-        mavenCentral()
-    }
-}
+// 不要再出现 allprojects { repositories { … } } 或 subprojects { … }
