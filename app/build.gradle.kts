@@ -24,10 +24,7 @@ android {
     }
 
     sourceSets {
-        getByName("main").res.srcDirs(
-            "src/main/res",
-            project.rootDir.resolve("icons")
-        )
+        getByName("main").res.srcDirs("src/main/res")
     }
 
     kotlinOptions {
