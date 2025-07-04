@@ -15,41 +15,33 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. 签出代码
       - uses: actions/checkout@v4
 
-      # 2. 验证主题文件存在
       - name: Verify theme files exist
         run: |
-          echo "values dir:"
           ls -1 app/src/main/res/values
           test -f app/src/main/res/values/attrs.xml
           test -f app/src/main/res/values/colors.xml
           test -f app/src/main/res/values/themes.xml
 
-      # 3. 设置 JDK 17
       - name: Set up JDK 17
         uses: actions/setup-java@v3
         with:
           distribution: temurin
           java-version: '17'
 
-      # 4. 设置 Android SDK
       - name: Set up Android SDK
         uses: android-actions/setup-android@v2
         with:
           api-level: 34
           build-tools-version: '34.0.0'
 
-      # 5. 删除默认 mipmap 目录
       - name: Clean default mipmaps
         run: rm -rf app/src/main/res/mipmap-*/
 
-      # 6. 拷贝自定义 icons 到 res
       - name: Copy custom icons
         run: cp -r icons/mipmap-* app/src/main/res/
 
-      # 7. 构建 Debug & Release，开启详细日志
       - name: Build Debug & Release
         uses: gradle/gradle-build-action@v2
         with:
@@ -57,7 +49,6 @@ jobs:
           cache-disabled: true
           arguments: ':app:assembleDebug :app:assembleRelease --info --stacktrace'
 
-      # 8. 创建 Release
       - name: Create GitHub Release
         id: create_release
         uses: actions/create-release@v1
@@ -66,7 +57,6 @@ jobs:
           release_name: Release ${{ github.event.inputs.version }}
           body: ${{ github.event.inputs.release_notes }}
 
-      # 9. 上传 APK
       - name: Upload Debug APK
         uses: actions/upload-release-asset@v1
         with:
@@ -83,7 +73,6 @@ jobs:
           asset_name: IClash-${{ github.event.inputs.version }}-release.apk
           asset_content_type: application/vnd.android.package-archive
 
-      # 10. 构建失败时上传日志与资源快照
       - name: Save build logs & res snapshot
         if: failure()
         run: |
@@ -91,7 +80,7 @@ jobs:
           cp -r app/src/main/res debug-output/res
           tar czf debug-output/gradle-logs.tgz ~/.gradle/daemon || true
 
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         if: failure()
         with:
           name: ci-debug-artifacts
