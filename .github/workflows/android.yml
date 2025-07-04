@@ -15,131 +15,97 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    #---------------------------------------------------------------------
-    # 1. 拉代码
-    #---------------------------------------------------------------------
-    - name: Checkout code
-      uses: actions/checkout@v4
-      with:
-        ref: main
-        token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          token: ${{ secrets.GITHUB_TOKEN }}
 
-    #---------------------------------------------------------------------
-    # 2. 安装 JDK 17
-    #---------------------------------------------------------------------
-    - name: Set up JDK 17
-      uses: actions/setup-java@v4
-      with:
-        distribution: temurin
-        java-version: '17'
+      - name: Set up JDK 17
+        uses: actions/setup-java@v3
+        with:
+          distribution: temurin
+          java-version: '17'
 
-    #---------------------------------------------------------------------
-    # 3. 如果缺 Wrapper，先装临时 Gradle，再自动生成 Wrapper=8.8
-    #---------------------------------------------------------------------
-    - name: Bootstrap Gradle (8.8) when no wrapper
-      id: bootstrap_gradle
-      uses: gradle/gradle-build-action@v2
-      with:
-        gradle-version: 8.8
-        cache-disabled: true
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v2
+        with:
+          api-level: 35
+          build-tools-version: '35.0.0'
 
-    - name: Ensure Gradle Wrapper (generate if missing)
-      id: ensure_wrapper
-      run: |
-        if [ ! -f "./gradlew" ]; then
-          echo "Gradle wrapper not found — generating with 8.8..."
-          gradle wrapper --gradle-version 8.8
-          chmod +x ./gradlew
-          echo "WRAPPER_GENERATED=true" >> "$GITHUB_ENV"
-        else
-          echo "Gradle wrapper already exists."
-        fi
+      - name: Set up Gradle CLI
+        uses: gradle/gradle-build-action@v2
+        with:
+          gradle-version: '8.7'
+          cache-disabled: true
 
-    - name: Commit Gradle Wrapper back to main
-      if: env.WRAPPER_GENERATED == 'true'
-      run: |
-        git config --global user.name  "github-actions[bot]"
-        git config --global user.email "github-actions[bot]@users.noreply.github.com"
-        git add ./gradlew ./gradlew.bat gradle/wrapper
-        git commit -m "chore(ci): add Gradle wrapper automatically" || true
-        # 若 main 分支受保护则 push 可能失败，无碍后续步骤
-        git push origin HEAD:main || echo "main is protected; skip push"
+      - name: Verify values/ directory
+        run: |
+          ls -l app/src/main/res/values
+          for f in attrs.xml colors.xml themes.xml; do
+            [ -f "app/src/main/res/values/$f" ] || (echo "ERROR: missing $f" && exit 1)
+          done
 
-    #---------------------------------------------------------------------
-    # 4. Android SDK (API‑35 / Build‑Tools‑35.0.0)
-    #---------------------------------------------------------------------
-    - name: Set up Android SDK
-      uses: android-actions/setup-android@v2
-      with:
-        api-level: 35
-        build-tools-version: '35.0.0'
+      - name: Copy custom icons
+        run: |
+          rm -rf app/src/main/res/mipmap-*/
+          cp -rv icons/mipmap-* app/src/main/res/
 
-    #---------------------------------------------------------------------
-    # 5. 运行构建
-    #---------------------------------------------------------------------
-    - name: Verify values/ directory
-      run: |
-        ls -l app/src/main/res/values
-        for f in attrs.xml colors.xml themes.xml; do
-          [ -f "app/src/main/res/values/$f" ] || (echo "ERROR: missing $f" && exit 1)
-        done
+      - name: Compile Kotlin & capture errors
+        shell: bash
+        run: |
+          ./gradlew clean compileDebugKotlin compileReleaseKotlin --stacktrace --info --debug 2>&1 | tee compile.log
 
-    - name: Copy custom icons
-      run: |
-        rm -rf app/src/main/res/mipmap-*/
-        cp -rv icons/mipmap-* app/src/main/res/
+      - name: Upload kotlin-compile-log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kotlin-compile-log
+          path: compile.log
 
-    - name: Build Debug & Release APKs
-      shell: bash
-      run: |
-        chmod +x ./gradlew
-        ./gradlew assembleDebug assembleRelease \
-          --console=plain --stacktrace 2>&1 | tee build.log
+      - name: Build Debug & Release APKs
+        shell: bash
+        run: |
+          ./gradlew assembleDebug assembleRelease --console=plain --info --stacktrace 2>&1 | tee build.log
 
-    #---------------------------------------------------------------------
-    # 6. 失败时收集日志
-    #---------------------------------------------------------------------
-    - name: Upload build.log
-      if: failure()
-      uses: actions/upload-artifact@v4
-      with:
-        name: build-log
-        path: build.log
+      - name: Upload full-build-log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: full-build-log
+          path: build.log
 
-    - name: Commit error log to log/ci-error.log
-      if: failure()
-      run: |
-        mkdir -p log
-        cp build.log log/ci-error.log
-        git config --global user.name  "github-actions[bot]"
-        git config --global user.email "github-actions[bot]@users.noreply.github.com"
-        git add log/ci-error.log
-        git commit -m "chore(ci): update ci-error.log" || true
-        git push origin HEAD:main || echo "main is protected; skip push"
+      - name: Commit error log to log/ci-error.log
+        if: failure()
+        run: |
+          mkdir -p log
+          cp compile.log log/ci-error.log || cp build.log log/ci-error.log
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add log/ci-error.log
+          git commit -m "chore(ci): update ci-error.log" || echo "no changes"
+          git push origin main
 
-    #---------------------------------------------------------------------
-    # 7. 创建 Release 并上传 APK
-    #---------------------------------------------------------------------
-    - name: Create GitHub Release
-      id: create_release
-      uses: actions/create-release@v1
-      with:
-        tag_name: v${{ github.event.inputs.version }}
-        release_name: Release ${{ github.event.inputs.version }}
-        body: ${{ github.event.inputs.release_notes }}
+      - name: Create GitHub Release
+        id: create_release
+        uses: actions/create-release@v1
+        with:
+          tag_name: v${{ github.event.inputs.version }}
+          release_name: Release ${{ github.event.inputs.version }}
+          body: ${{ github.event.inputs.release_notes }}
 
-    - name: Upload Debug APK
-      uses: actions/upload-release-asset@v1
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: app/build/outputs/apk/debug/app-debug.apk
-        asset_name: IClash-${{ github.event.inputs.version }}-debug.apk
-        asset_content_type: application/vnd.android.package-archive
+      - name: Upload Debug APK
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: app/build/outputs/apk/debug/app-debug.apk
+          asset_name: IClash-${{ github.event.inputs.version }}-debug.apk
+          asset_content_type: application/vnd.android.package-archive
 
-    - name: Upload Release APK
-      uses: actions/upload-release-asset@v1
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: app/build/outputs/apk/release/app-release.apk
-        asset_name: IClash-${{ github.event.inputs.version }}-release.apk
-        asset_content_type: application/vnd.android.package-archive
+      - name: Upload Release APK
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: app/build/outputs/apk/release/app-release.apk
+          asset_name: IClash-${{ github.event.inputs.version }}-release.apk
+          asset_content_type: application/vnd.android.package-archive
