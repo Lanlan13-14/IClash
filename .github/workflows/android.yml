@@ -15,66 +15,59 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Checkout code
+      # 1. 签出源码（允许提交回主分支）
       - uses: actions/checkout@v4
+        with:
+          ref: main
+          token: ${{ secrets.GITHUB_TOKEN }}
 
-      # 2. Set up Java 17
+      # 2. 设置 JDK 17
       - name: Set up JDK 17
         uses: actions/setup-java@v3
         with:
           distribution: temurin
           java-version: '17'
 
-      # 3. Set up Android SDK
+      # 3. 设置 Android SDK
       - name: Set up Android SDK
         uses: android-actions/setup-android@v2
         with:
           api-level: 34
           build-tools-version: '34.0.0'
 
-      # 4. Install Gradle CLI (8.2)
+      # 4. 安装 Gradle CLI
       - name: Set up Gradle CLI
         uses: gradle/gradle-build-action@v2
         with:
           gradle-version: '8.2'
           cache-disabled: true
-          # wrapper: false  # 默认不使用 wrapper
 
-      # 5. Verify theme XML files
-      - name: Verify theme files
+      # 5. 校验资源文件
+      - name: Verify values/ directory contents
         run: |
-          echo "values/ 目录内容："
-          ls -1 app/src/main/res/values
+          echo "Checking values/ directory:"
+          ls -l app/src/main/res/values
           for f in attrs.xml colors.xml themes.xml; do
-            test -f app/src/main/res/values/$f || (echo "ERROR: 缺少 $f" && exit 1)
+            if [ ! -f "app/src/main/res/values/$f" ]; then
+              echo "❌ Missing: $f"
+              exit 1
+            fi
           done
 
-      # 6. Verify & copy icons
+      # 6. 拷贝自定义 icons
       - name: Copy custom icons
         run: |
-          echo "icons/ 目录结构："
-          ls -R icons || (echo "ERROR: icons/ 不存在" && exit 1)
-
-          echo "删除默认 mipmap*"
           rm -rf app/src/main/res/mipmap-*/
-
-          echo "拷贝自定义 icons → app/src/main/res/"
           cp -rv icons/mipmap-* app/src/main/res/
-          echo "Res 下已存在 mipmap*："
-          ls -1 app/src/main/res | grep mipmap || (echo "ERROR: 无 mipmap* 目录" && exit 1)
 
-      # 7. Compile Kotlin only, capture errors
+      # 7. 编译 Kotlin 并捕获日志
       - name: Compile Kotlin & capture errors
         shell: bash
         run: |
-          echo ">>> Listing values/"
-          ls -R app/src/main/res/values
-
-          echo ">>> Kotlin compile start"
-          gradle --no-daemon clean compileDebugKotlin compileReleaseKotlin \
+          gradle clean compileDebugKotlin compileReleaseKotlin \
             --console=plain --info --stacktrace 2>&1 | tee compile.log
 
-      # 8. Upload compile.log on failure
+      # 8. 上传 Kotlin 编译日志（失败时）
       - name: Upload kotlin-compile-log
         if: failure()
         uses: actions/upload-artifact@v4
@@ -82,15 +75,14 @@ jobs:
           name: kotlin-compile-log
           path: compile.log
 
-      # 9. Build Debug & Release APKs, capture full logs
+      # 9. 构建 APK 并捕获日志
       - name: Build Debug & Release APKs
         shell: bash
         run: |
-          echo ">>> Assemble APKs"
-          gradle --no-daemon assembleDebug assembleRelease \
+          gradle assembleDebug assembleRelease \
             --console=plain --info --stacktrace 2>&1 | tee build.log
 
-      # 10. Upload build.log on failure
+      # 10. 上传构建日志（失败时）
       - name: Upload full-build-log
         if: failure()
         uses: actions/upload-artifact@v4
@@ -98,7 +90,31 @@ jobs:
           name: full-build-log
           path: build.log
 
-      # 11. Create GitHub Release
+      # 11. 将错误日志写入 log/ci-error.log 并提交到主分支
+      - name: Commit error log to log/ folder on main
+        if: failure()
+        run: |
+          mkdir -p log
+          LOG_FILE=""
+          if [ -f compile.log ]; then
+            LOG_FILE="compile.log"
+          elif [ -f build.log ]; then
+            LOG_FILE="build.log"
+          else
+            echo "❌ No log file found"
+            exit 1
+          fi
+
+          cp "$LOG_FILE" log/ci-error.log
+
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add log/ci-error.log
+          git commit -m "chore(ci): update ci-error.log from failed build" || echo "No changes to commit"
+          git push origin main
+
+      # 12. 创建 GitHub Release
       - name: Create GitHub Release
         id: create_release
         uses: actions/create-release@v1
@@ -107,7 +123,7 @@ jobs:
           release_name: Release ${{ github.event.inputs.version }}
           body: ${{ github.event.inputs.release_notes }}
 
-      # 12. Upload Debug APK
+      # 13. 上传 Debug APK
       - name: Upload Debug APK
         uses: actions/upload-release-asset@v1
         with:
@@ -116,7 +132,7 @@ jobs:
           asset_name: IClash-${{ github.event.inputs.version }}-debug.apk
           asset_content_type: application/vnd.android.package-archive
 
-      # 13. Upload Release APK
+      # 14. 上传 Release APK
       - name: Upload Release APK
         uses: actions/upload-release-asset@v1
         with:
