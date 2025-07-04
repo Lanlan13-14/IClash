@@ -15,9 +15,7 @@ android {
         versionName = "1.0.0"
     }
 
-    buildFeatures {
-        compose = true
-    }
+    buildFeatures { compose = true }
 
     composeOptions {
         kotlinCompilerExtensionVersion = "1.5.10"
@@ -26,13 +24,11 @@ android {
     sourceSets {
         getByName("main").res.srcDirs(
             "src/main/res",
-            project.rootDir.resolve("icons") // 自动将 icons/ 下 mipmap-* 合并进资源
+            project.rootDir.resolve("icons")
         )
     }
 
-    kotlinOptions {
-        jvmTarget = "17"
-    }
+    kotlinOptions { jvmTarget = "17" }
 }
 
 dependencies {
