@@ -3,6 +3,7 @@ package com.iclash.ui.proxy
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
@@ -21,35 +22,40 @@ fun ProxyPage() {
     val scope = rememberCoroutineScope()
     var groups by remember { mutableStateOf<Map<String, List<ProxyItem>>>(emptyMap()) }
     var expanded by remember { mutableStateOf(setOf<String>()) }
-    var selected by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
+    var selectedGroup by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
     var delays by remember { mutableStateOf<Map<String, Int>>(emptyMap()) }
     var doubleRow by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         val res: ProxiesResponse = MihomoController.getProxies()
-        groups = res.proxies
-        selected = res.proxies.mapValues { it.value.firstOrNull()?.name.orEmpty() }
+        // 过滤 hidden=true
+        groups = res.proxies.mapValues { it.value.filter { item -> item.hidden != true } }
+        selectedGroup = groups.mapValues { (_, list) ->
+            list.find { it.now == it.name }?.name ?: list.firstOrNull()?.name.orEmpty()
+        }
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("代理管理") },
-                actions = {
-                    TextButton(onClick = { doubleRow = !doubleRow }) {
-                        Text(if (doubleRow) "单行" else "双行")
-                    }
+    Scaffold(topBar = {
+        TopAppBar(
+            title = { Text("代理管理") },
+            actions = {
+                TextButton(onClick = { doubleRow = !doubleRow }) {
+                    Text(if (doubleRow) "单行" else "双行")
                 }
-            )
-        }
-    ) { padding ->
+            }
+        )
+    }) { padding ->
         LazyColumn(
             Modifier
                 .padding(padding)
                 .fillMaxSize()
         ) {
             groups.forEach { (group, proxies) ->
+                // 跳过无节点的组
+                if (proxies.isEmpty()) return@forEach
+
                 item {
+                    val now = selectedGroup[group] ?: "—"
                     Row(
                         Modifier
                             .fillMaxWidth()
@@ -60,7 +66,7 @@ fun ProxyPage() {
                             .padding(16.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(group, style = MaterialTheme.typography.titleMedium)
+                        Text("$group (当前: $now)", style = MaterialTheme.typography.titleMedium)
                         Spacer(Modifier.weight(1f))
                         Icon(
                             imageVector = if (expanded.contains(group)) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
@@ -68,21 +74,26 @@ fun ProxyPage() {
                         )
                     }
                 }
+
                 if (expanded.contains(group)) {
                     item {
-                        Column(modifier = Modifier.padding(horizontal = 16.dp)) {
-                            if (doubleRow) {
-                                FlowRow(
-                                    mainAxisSpacing = 8.dp,
-                                    crossAxisSpacing = 8.dp
-                                ) {
-                                    proxies.forEach { ProxyButton(it, group, selected, delays, scope) }
-                                }
-                            } else {
-                                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    items(proxies.size) { idx ->
-                                        ProxyButton(proxies[idx], group, selected, delays, scope)
-                                    }
+                        if (doubleRow) {
+                            FlowRow(
+                                Modifier.padding(horizontal = 16.dp),
+                                mainAxisSpacing = 8.dp,
+                                crossAxisSpacing = 8.dp
+                            ) {
+                                proxies.forEach { ProxyButton(it, group, selectedGroup, delays, scope) }
+                            }
+                        } else {
+                            LazyRow(
+                                Modifier
+                                    .padding(horizontal = 16.dp)
+                                    .fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                proxies.forEach { proxy ->
+                                    item { ProxyButton(proxy, group, selectedGroup, delays, scope) }
                                 }
                             }
                         }
@@ -97,11 +108,11 @@ fun ProxyPage() {
 private fun ProxyButton(
     proxy: ProxyItem,
     group: String,
-    selected: Map<String, String>,
+    selectedGroup: Map<String, String>,
     delays: Map<String, Int>,
     scope: kotlinx.coroutines.CoroutineScope
 ) {
-    val isSelected = selected[group] == proxy.name
+    val isSelected = selectedGroup[group] == proxy.name
     Button(
         onClick = {
             scope.launch {
@@ -113,10 +124,12 @@ private fun ProxyButton(
         colors = ButtonDefaults.buttonColors(
             containerColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant
         ),
-        modifier = Modifier.height(48.dp)
+        modifier = Modifier.height(64.dp)
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(proxy.name, maxLines = 1)
+            proxy.type?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
+            proxy.now?.let { Text("当前: $it", style = MaterialTheme.typography.bodySmall) }
             delays[proxy.name]?.let { Text("${it}ms", style = MaterialTheme.typography.bodySmall) }
         }
     }
