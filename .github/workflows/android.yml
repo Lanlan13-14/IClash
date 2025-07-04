@@ -17,31 +17,42 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # 检查主题资源文件是否存在
       - name: Verify theme files exist
         run: |
+          echo "Checking theme files..."
           ls -1 app/src/main/res/values
           test -f app/src/main/res/values/attrs.xml
           test -f app/src/main/res/values/colors.xml
           test -f app/src/main/res/values/themes.xml
 
+      # 设置 JDK 17
       - name: Set up JDK 17
         uses: actions/setup-java@v3
         with:
           distribution: temurin
           java-version: '17'
 
+      # 设置 Android SDK
       - name: Set up Android SDK
         uses: android-actions/setup-android@v2
         with:
           api-level: 34
           build-tools-version: '34.0.0'
 
+      # 删除默认 mipmap 图标
       - name: Clean default mipmaps
         run: rm -rf app/src/main/res/mipmap-*/
 
+      # 拷贝你仓库中的 icons 到 res/
       - name: Copy custom icons
-        run: cp -r icons/mipmap-* app/src/main/res/
+        run: |
+          echo "Copying icons from icons/ to app/src/main/res/"
+          cp -rv icons/mipmap-* app/src/main/res/
+          echo "Resulting mipmap folders:"
+          ls -1 app/src/main/res | grep mipmap
 
+      # 构建 Debug & Release APK
       - name: Build Debug & Release
         uses: gradle/gradle-build-action@v2
         with:
@@ -49,6 +60,7 @@ jobs:
           cache-disabled: true
           arguments: ':app:assembleDebug :app:assembleRelease --info --stacktrace'
 
+      # 创建 GitHub Release
       - name: Create GitHub Release
         id: create_release
         uses: actions/create-release@v1
@@ -57,6 +69,7 @@ jobs:
           release_name: Release ${{ github.event.inputs.version }}
           body: ${{ github.event.inputs.release_notes }}
 
+      # 上传 APK 文件
       - name: Upload Debug APK
         uses: actions/upload-release-asset@v1
         with:
@@ -73,6 +86,7 @@ jobs:
           asset_name: IClash-${{ github.event.inputs.version }}-release.apk
           asset_content_type: application/vnd.android.package-archive
 
+      # 构建失败时上传日志和资源快照
       - name: Save build logs & res snapshot
         if: failure()
         run: |
