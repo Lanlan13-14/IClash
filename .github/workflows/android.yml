@@ -13,7 +13,6 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
 
@@ -29,19 +28,23 @@ jobs:
           api-level: 34
           build-tools-version: '34.0.0'
 
-      - name: Remove default launcher mipmap folders
+      # 删除旧的 mipmap 文件夹
+      - name: Clean default mipmaps
         run: rm -rf app/src/main/res/mipmap-*/
 
-      - name: Copy custom icons into res
+      # 拷贝自定义 icons 到 res
+      - name: Copy custom icons
         run: cp -r icons/mipmap-* app/src/main/res/
 
-      - name: Build Debug & Release APKs
+      # 构建 APK（禁用 Gradle 缓存可略过缓存警告）
+      - name: Build Debug & Release
         uses: gradle/gradle-build-action@v2
         with:
           gradle-version: '8.2'
           cache-disabled: true
           arguments: ':app:assembleDebug :app:assembleRelease --stacktrace'
 
+      # 发布 Release 并上传 APK
       - name: Create GitHub Release
         id: create_release
         uses: actions/create-release@v1
@@ -49,8 +52,6 @@ jobs:
           tag_name: v${{ github.event.inputs.version }}
           release_name: Release ${{ github.event.inputs.version }}
           body: ${{ github.event.inputs.release_notes }}
-          draft: false
-          prerelease: false
 
       - name: Upload Debug APK
         uses: actions/upload-release-asset@v1
