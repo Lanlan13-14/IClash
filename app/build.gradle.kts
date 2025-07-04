@@ -1,49 +1,55 @@
 plugins {
     id("com.android.application")
     kotlin("android")
-    kotlin("plugin.serialization")
+    kotlin("plugin.serialization") // 启用 Kotlin 序列化插件
 }
 
 android {
-    namespace  = "com.iclash"
+    namespace = "com.iclash"
     compileSdk = 35
 
     defaultConfig {
         applicationId = "com.iclash"
-        minSdk        = 24
-        targetSdk     = 35
-        versionCode   = 1
-        versionName   = "1.0.0"
+        minSdk = 24
+        targetSdk = 35
+        versionCode = 1
+        versionName = "1.0.0"
     }
 
     buildFeatures {
         compose = true
     }
+
     composeOptions {
         kotlinCompilerExtensionVersion = "1.5.15"
     }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-    kotlinOptions { jvmTarget = "17" }
+
+    kotlinOptions {
+        jvmTarget = "17"
+    }
 }
 
 dependencies {
-    // Compose BOM 管理所有 Compose 相关版本
+    // Compose 版本管理 BOM
     implementation(platform("androidx.compose:compose-bom:2025.06.00"))
+
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.compose.material3:material3")
     implementation("androidx.activity:activity-compose:1.8.2")
     implementation("androidx.navigation:navigation-compose:2.8.0")
 
-    // 基础 Android & Material
+    // Android 基础库
     implementation("androidx.core:core-ktx:1.12.0")
     implementation("androidx.appcompat:appcompat:1.6.1")
     implementation("com.google.android.material:material:1.9.0")
 
-    // 网络 / 序列化
+    // 网络和序列化
     implementation("io.ktor:ktor-client-core:2.3.4")
     implementation("io.ktor:ktor-client-cio:2.3.4")
     implementation("io.ktor:ktor-client-content-negotiation:2.3.4")
