@@ -20,7 +20,7 @@ object RuleInjector {
         val text = client.get("$BASE/configs").bodyAsText()
         val cfg  = Json.parseToJsonElement(text).jsonObject
         val exist = cfg["rules"]?.jsonArray?.map { it.jsonPrimitive.content } ?: emptyList()
-        val (pre, post) = rules.partition { it.position=="prepend" }
+        val (pre, post) = rules.partition { it.position == "prepend" }
         val merged = pre.map { it.toClash() } + exist + post.map { it.toClash() }
         val body = buildJsonObject { put("rules", JsonArray(merged.map { JsonPrimitive(it) })) }
         val resp = client.patch("$BASE/configs") {
@@ -30,5 +30,5 @@ object RuleInjector {
         return resp.status.value in 200..299
     }
 
-    private fun OverwriteRule.toClash() = listOf(type,value,target).joinToString(",")
+    private fun OverwriteRule.toClash() = listOf(type, value, target).joinToString(",")
 }
