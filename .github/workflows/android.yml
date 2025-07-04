@@ -54,7 +54,7 @@ jobs:
       - name: Compile Kotlin & capture errors
         shell: bash
         run: |
-          ./gradlew clean compileDebugKotlin compileReleaseKotlin --stacktrace --info --debug 2>&1 | tee compile.log
+          gradle clean compileDebugKotlin compileReleaseKotlin --stacktrace --info --debug 2>&1 | tee compile.log
 
       - name: Upload kotlin-compile-log
         if: failure()
@@ -66,7 +66,7 @@ jobs:
       - name: Build Debug & Release APKs
         shell: bash
         run: |
-          ./gradlew assembleDebug assembleRelease --console=plain --info --stacktrace 2>&1 | tee build.log
+          gradle assembleDebug assembleRelease --console=plain --info --stacktrace 2>&1 | tee build.log
 
       - name: Upload full-build-log
         if: failure()
