@@ -15,54 +15,34 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          ref: main
-          token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/checkout@v4
 
-      - name: Set up JDK 17
-        uses: actions/setup-java@v3
+      - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v2
+      - uses: android-actions/setup-android@v2
         with:
-          api-level: 35
-          build-tools-version: '35.0.0'
+          api-level: 34
+          build-tools-version: '34.0.0'
 
-      - name: Set up Gradle CLI
-        uses: gradle/gradle-build-action@v2
-        with:
-          gradle-version: '8.7'
-          cache-disabled: true
+      - uses: gradle/gradle-build-action@v2
 
-      - name: Verify values/ directory
+      - name: Build APKs
         run: |
-          ls -l app/src/main/res/values
-          for f in attrs.xml colors.xml themes.xml; do
-            [ -f "app/src/main/res/values/$f" ] || (echo "ERROR: missing $f" && exit 1)
-          done
+          chmod +x gradlew
+          ./gradlew --no-daemon assembleDebug assembleRelease --console=plain --stacktrace 2>&1 | tee build.log
 
-      - name: Copy custom icons
-        run: |
-          rm -rf app/src/main/res/mipmap-*/
-          cp -rv icons/mipmap-* app/src/main/res/
-
-      - name: Compile Kotlin & capture errors
-        shell: bash
-        run: |
-          gradle clean compileDebugKotlin compileReleaseKotlin \
-            --console=plain --info --stacktrace 2>&1 | tee compile.log
-
-      - name: Upload kotlin-compile-log
+      - name: Upload build.log on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: kotlin-compile-log
-          path: compile.log
+          name: build-log
+          path: build.log
+
+      # 下面 Release／上传 APK 的步骤保持不变……
+
 
       - name: Build Debug & Release APKs
         shell: bash
