@@ -15,68 +15,66 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. 签出代码
+      # 1. Checkout code
       - uses: actions/checkout@v4
 
-      # 2. 校验 theme 资源
-      - name: Verify theme files
-        run: |
-          echo "values/ 目录："
-          ls -1 app/src/main/res/values
-          for f in attrs.xml colors.xml themes.xml; do
-            test -f app/src/main/res/values/$f || (echo "ERROR: 缺少 $f" && exit 1)
-          done
-
-      # 3. 校验 icons 目录
-      - name: Verify icons folder
-        run: |
-          echo "icons/ 目录结构："
-          ls -R icons || (echo "ERROR: icons/ 不存在" && exit 1)
-
-      # 4. 删除默认 mipmap
-      - name: Clean default mipmaps
-        run: rm -rf app/src/main/res/mipmap-*/
-
-      # 5. 拷贝自定义 icons
-      - name: Copy custom icons
-        run: |
-          echo "Copying icons → app/src/main/res/"
-          cp -rv icons/mipmap-* app/src/main/res/
-          echo "Res 下 mipmap*:"
-          ls -1 app/src/main/res | grep mipmap || (echo "ERROR: 无 mipmap 目录" && exit 1)
-
-      # 6. 设置 JDK 17
+      # 2. Set up Java 17
       - name: Set up JDK 17
         uses: actions/setup-java@v3
         with:
           distribution: temurin
           java-version: '17'
 
-      # 7. 设置 Android SDK
+      # 3. Set up Android SDK
       - name: Set up Android SDK
         uses: android-actions/setup-android@v2
         with:
           api-level: 34
           build-tools-version: '34.0.0'
 
-      # 8. 安装 Gradle CLI
-      - name: Set up Gradle
+      # 4. Install Gradle CLI (8.2)
+      - name: Set up Gradle CLI
         uses: gradle/gradle-build-action@v2
         with:
           gradle-version: '8.2'
           cache-disabled: true
+          # wrapper: false  # 默认不使用 wrapper
 
-      # 9. 单独编译 Kotlin 并捕获错误
+      # 5. Verify theme XML files
+      - name: Verify theme files
+        run: |
+          echo "values/ 目录内容："
+          ls -1 app/src/main/res/values
+          for f in attrs.xml colors.xml themes.xml; do
+            test -f app/src/main/res/values/$f || (echo "ERROR: 缺少 $f" && exit 1)
+          done
+
+      # 6. Verify & copy icons
+      - name: Copy custom icons
+        run: |
+          echo "icons/ 目录结构："
+          ls -R icons || (echo "ERROR: icons/ 不存在" && exit 1)
+
+          echo "删除默认 mipmap*"
+          rm -rf app/src/main/res/mipmap-*/
+
+          echo "拷贝自定义 icons → app/src/main/res/"
+          cp -rv icons/mipmap-* app/src/main/res/
+          echo "Res 下已存在 mipmap*："
+          ls -1 app/src/main/res | grep mipmap || (echo "ERROR: 无 mipmap* 目录" && exit 1)
+
+      # 7. Compile Kotlin only, capture errors
       - name: Compile Kotlin & capture errors
         shell: bash
         run: |
-          echo ">>> 挂载 values/："
+          echo ">>> Listing values/"
           ls -R app/src/main/res/values
-          echo ">>> 开始 Kotlin 编译"
-          gradle clean compileDebugKotlin compileReleaseKotlin \
+
+          echo ">>> Kotlin compile start"
+          gradle --no-daemon clean compileDebugKotlin compileReleaseKotlin \
             --console=plain --info --stacktrace 2>&1 | tee compile.log
 
-      # 10. Kotlin 编译失败时上传日志
+      # 8. Upload compile.log on failure
       - name: Upload kotlin-compile-log
         if: failure()
         uses: actions/upload-artifact@v4
@@ -84,15 +82,15 @@ jobs:
           name: kotlin-compile-log
           path: compile.log
 
-      # 11. 组装 APK 并捕获完整日志
+      # 9. Build Debug & Release APKs, capture full logs
       - name: Build Debug & Release APKs
         shell: bash
         run: |
-          echo ">>> 开始 assembleDebug & assembleRelease"
-          gradle assembleDebug assembleRelease \
+          echo ">>> Assemble APKs"
+          gradle --no-daemon assembleDebug assembleRelease \
             --console=plain --info --stacktrace 2>&1 | tee build.log
 
-      # 12. 组装失败时上传完整日志
+      # 10. Upload build.log on failure
       - name: Upload full-build-log
         if: failure()
         uses: actions/upload-artifact@v4
@@ -100,7 +98,7 @@ jobs:
           name: full-build-log
           path: build.log
 
-      # 13. 创建 GitHub Release
+      # 11. Create GitHub Release
       - name: Create GitHub Release
         id: create_release
         uses: actions/create-release@v1
@@ -109,7 +107,7 @@ jobs:
           release_name: Release ${{ github.event.inputs.version }}
           body: ${{ github.event.inputs.release_notes }}
 
-      # 14. 上传 Debug APK
+      # 12. Upload Debug APK
       - name: Upload Debug APK
         uses: actions/upload-release-asset@v1
         with:
@@ -118,7 +116,7 @@ jobs:
           asset_name: IClash-${{ github.event.inputs.version }}-debug.apk
           asset_content_type: application/vnd.android.package-archive
 
-      # 15. 上传 Release APK
+      # 13. Upload Release APK
       - name: Upload Release APK
         uses: actions/upload-release-asset@v1
         with:
